@@ -1,0 +1,12 @@
+# 测试产物与本地临时
+.test-artifacts/
+*.log
+shots/
+
+# 第三方参考素材（仅构建期使用，不公开分发）
+ref/
+
+# 系统杂物
+node_modules/
+Thumbs.db
+.DS_Store

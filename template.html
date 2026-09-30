@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>雨夜词旅 · TYPE RUNNER</title>
+<style>
+/*__STYLE__*/
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="fx">
+  <div id="vignette"></div>
+  <div id="speedlines"></div>
+  <div id="danger"></div>
+  <div id="flash"></div>
+</div>
+
+<div id="hud">
+  <div class="journey"><span class="journey-name">记忆旅程</span><div class="route-stops"><span id="stop0" class="on">书店</span><i></i><span id="stop1">便利店</span><i></i><span id="stop2">车站</span></div><b id="journeyCount">0 / 10</b><div class="journey-bar"><i id="journeyFill"></i></div></div>
+  <button id="btnPause" type="button" aria-label="暂停旅程">Ⅱ <span>暂停</span></button>
+  <section id="battleHud" class="quest-ui" aria-label="护灯战况">
+    <div class="battle-top"><span>雨夜护灯</span><div class="battle-rooms"><i id="qRoom0">书店</i><i id="qRoom1">高架桥</i><i id="qRoom2">车站 Boss</i></div><b id="battleStage">0 / 6</b></div>
+    <div class="battle-heading"><h2 id="battleName">收集词语符文</h2><time id="battleClock">4:00</time></div>
+    <div class="enemy-health"><i id="enemyFill"></i></div><div id="enemyHealth">认识词语，就是准备武器</div>
+    <div class="battle-vitals"><div class="lamp-stat"><span>灯火 <b id="lampN">100</b></span><div class="lamp-health"><i id="lampFill"></i></div></div><div><span>护盾</span><b id="shieldN">0</b></div><div><span>鲸潮能量</span><b><span id="energyN">0</span><small> / 60</small></b></div></div>
+    <p id="attackWarning">准备阶段安全</p>
+  </section>
+  <div id="track">
+    <div class="tlabel boss-l">影</div>
+    <div class="tlabel me-l">車</div>
+    <div class="tline"></div>
+    <div id="mBoss"></div>
+    <div id="mMe"></div>
+  </div>
+  <div id="stats">
+    <div id="dist" class="bignum">0<i>m</i></div>
+    <div id="spd" class="bignum">0<i>km/h</i></div>
+    <div id="wpm" class="bignum">0<i>WPM</i></div>
+  </div>
+  <div id="score">
+    <div class="slab">SCORE</div>
+    <div id="scoreN" class="bignum">0</div>
+    <div id="wordN" class="words-n">0 WORDS</div>
+  </div>
+  <div id="combo"></div>
+  <div id="accChip">100<i>准确率</i></div>
+  <div id="zhflash"></div>
+  <div id="words"></div>
+  <div id="hint">ESC 暂停 · 拖动环顾 · 英文输入法</div>
+  <div id="station">
+    <div class="station-top"><span id="stStage">初见</span><span id="timerLabel"></span></div>
+    <div id="battleActions" class="quest-ui"><button id="btnStrike" class="selected" type="button"><kbd>F1</kbd> 出击 <small>高伤害</small></button><button id="btnGuard" type="button"><kbd>F2</kbd> 护灯 <small>攻击 + 护盾</small></button><button id="btnSurge" type="button"><kbd>F3</kbd> 鲸潮 <small>消耗 60 能量</small></button></div>
+    <div class="st-mean" id="stMean"></div>
+    <div class="st-letters" id="stLetters"></div>
+    <div id="meaningChoices" hidden aria-label="选择词义"></div>
+    <div id="stFeedback" aria-live="polite"></div>
+    <div id="stExample"></div>
+    <p id="questHint" class="quest-ui"></p>
+    <input id="mobileEntry" class="mobile-entry" type="text" inputmode="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="点这里，用键盘拼写" aria-label="输入英文拼写">
+    <div class="word-time"><i id="wordTimer"></i></div>
+    <div class="station-actions"><button id="btnSpeak" type="button">朗读 <kbd>TAB</kbd></button><button id="btnHint" type="button">看提示 <kbd>空格</kbd></button><button id="btnSkip" type="button">稍后再记 <kbd>↵</kbd></button></div>
+  </div>
+</div>
+<div id="ready"><b id="readyTxt"></b></div>
+
+<div id="menu">
+  <header class="brand"><span class="brand-mark">雨</span><span>雨夜词旅 <small>TYPE RUNNER</small></span><span class="brand-note">记住的每个词，都是战胜遗忘的力量。</span></header>
+  <div class="m-card">
+    <div class="m-eyebrow"><span class="live-dot"></span> TOKYO AFTER HOURS / VOL. 01</div>
+    <h1 id="mTitle" aria-label="雨夜词旅"></h1>
+    <div class="m-sub">用记住的单词，<br>守住雨夜的灯火。</div>
+    <p class="m-description">六枚词语符文、三处街区和遗忘之影。<br>回忆施法，认义闪避。击败 Boss，赶上末班车。</p>
+    <div class="session-meta"><span>6 词卡组</span><span>出击 / 护盾 / 鲸潮</span></div>
+    <div class="m-rows">
+      <button type="button" class="mrow go" id="rowStart"><span class="cn">出发，迎战遗忘</span><i class="en">START RUN</i><em>↗</em></button>
+      <button type="button" class="mrow" id="rowDiff"><b>02</b><span class="cn">难度</span><i class="tag" id="diffTag">标准</i><i class="en">LEVEL</i></button>
+      <button type="button" class="mrow" id="rowBank"><b>03</b><span class="cn">词库</span><i class="tag" id="bankTag">核心精选</i><i class="en">WORDS</i></button>
+      <button type="button" class="mrow" id="rowMode"><b>04</b><span class="cn">模式</span><i class="tag" id="modeTag">记忆旅程</i><i class="en">MODE</i></button>
+      <button type="button" class="mrow" id="rowRec"><b>05</b><span class="cn">纪录</span><i class="en">RECORDS</i></button>
+      <button type="button" class="mrow" id="rowSet"><b>06</b><span class="cn">设置</span><i class="en">SETTINGS</i></button>
+    </div>
+    <div class="m-subpanel" id="spDiff">
+      <button data-diff="low">入门 · 从容</button>
+      <button data-diff="mid" class="on">标准 · 挑战</button>
+      <button data-diff="high">困难 · 极限</button>
+      <p id="diffHint">标准节奏：留出思考时间，也有一点挑战。</p>
+    </div>
+    <div class="m-subpanel" id="spBank"></div>
+    <div class="m-subpanel" id="spMode">
+      <button data-mode="quest" class="on">护灯闯关 · 推荐</button>
+      <button data-mode="learn">记忆训练 · 先认识再回忆</button>
+      <button data-mode="recall">回忆 · 看中文拼写</button>
+      <button data-mode="spell">拼写 · 看词打字</button>
+      <button data-mode="hear">听写 · 听音打字</button>
+      <p>护灯闯关：先认识 6 词，再限时回忆攻击、认义闪避。F1 出击，F2 护灯，60 能量可按 F3 放鲸潮。最后需独立回忆封印词。其余模式可单独训练。</p>
+      <div class="s-accent"><span>发音</span>
+        <button data-accent="us" class="on">美式 US</button>
+        <button data-accent="uk">英式 UK</button>
+      </div>
+    </div>
+    <div class="m-subpanel" id="spRec">
+      <div id="recList"></div>
+    </div>
+    <div class="m-keys">ENTER 出发 · F 全屏 · 英文输入法</div>
+  </div>
+  <aside class="passport">
+    <div class="passport-top"><span>你的记忆手帐</span><small>MEMORY PASSPORT</small></div>
+    <div class="passport-stats"><div><b id="memSeen">0</b><span>已认识</span></div><div><b id="memMastered">0</b><span>熟悉词汇</span></div><div><b id="memDue">0</b><span>待复习</span></div></div>
+    <div class="passport-line"><i id="memoryFill"></i></div>
+    <p id="memoryNote">从第一个单词，开始积累。</p>
+    <p id="questRecord">护灯纪录 · 0 次通关</p>
+    <button id="btnReview" class="subtle-btn" type="button">复习已学单词 <span>↗</span></button>
+    <div class="route-preview"><span>今晚的挑战</span><b>书店夺灯 <i>→</i> 高架桥 <i>→</i> 车站 Boss</b><small>影弹会熄灭灯火。错词变成 Boss 护甲，回忆才能破甲。</small></div>
+  </aside>
+  <div class="scene-caption"><span>夜の散歩</span><p>22:30 · 雨夜东京</p><small>拖动环顾街区 · 滚轮调整视角</small></div>
+  <div class="m-recards">
+    <div class="rc"><span>最近距离</span><b id="rcDist">—</b></div>
+    <div class="rc"><span>最高连击</span><b id="rcCombo">—</b></div>
+    <div class="rc"><span>累计词汇</span><b id="rcWords">0</b></div>
+  </div>
+</div>
+
+<div id="setModal">
+  <div class="s-card">
+    <div class="s-head">设置 <i>SETTINGS</i><button id="setClose" type="button">✕</button></div>
+    <div class="s-row">
+      <label>背景音乐</label>
+      <input id="setBgm" type="range" min="0" max="1" step="0.01">
+      <output id="setBgmV"></output>
+    </div>
+    <div class="s-row">
+      <label>音效音量</label>
+      <input id="setSfx" type="range" min="0" max="1" step="0.01">
+      <output id="setSfxV"></output>
+    </div>
+    <div class="s-row">
+      <label>打字键音</label>
+      <label class="switch"><input id="setTick" type="checkbox"><i></i></label>
+      <button id="setTry" type="button" class="s-btn">试听 ↯</button>
+    </div>
+    <p class="s-tip">打字键音：轻而清脆的机械咔嗒声。背单词时建议保留。</p>
+  </div>
+</div>
+
+<div id="over">
+  <div class="o-card">
+    <div class="o-title" id="ovTitle">今晚，记住了什么？</div>
+    <div class="o-en">TOKYO STROLL SUMMARY</div>
+    <div class="o-grid">
+      <div><b id="ovDist">0</b><span>距离 m</span></div>
+      <div><b id="ovWords">0</b><span>单词</span></div>
+      <div><b id="ovWpm">0</b><span>WPM</span></div>
+      <div><b id="ovCombo">0</b><span>最大连击</span></div>
+    </div>
+    <div class="o-learned" id="ovLearned"></div>
+    <div class="o-missed" id="ovMissed"></div>
+    <div class="o-best" id="ovBest"></div>
+    <div id="ovMemory" class="o-memory"></div>
+    <div class="o-btns">
+      <button id="btnAgain" type="button">下一段旅程</button>
+      <button id="btnRetry" type="button">复习待记词</button>
+      <button id="btnMenu" type="button">回到街区</button>
+    </div>
+  </div>
+</div>
+
+<div id="pause" role="dialog" aria-modal="true" aria-labelledby="pauseTitle" hidden>
+  <div class="pause-card"><small>TAKE A BREATH</small><h2 id="pauseTitle">在街角歇一会儿</h2><p>进度和倒计时已暂停。准备好了就继续。</p><button id="btnResume" class="primary-btn" type="button">继续旅程 <span>↗</span></button><button id="btnFinish" class="subtle-btn" type="button">结束这次旅程</button><small>ESC 继续 · 离开窗口自动暂停</small></div>
+</div>
+
+<div id="panel">
+  <div class="p-head"><span>控制台 CONSOLE</span><button id="panelMin" type="button" title="收起 (H)">—</button></div>
+  <div class="p-row">
+    <label>时间</label>
+    <input id="ctlTime" type="range" min="0" max="24" step="0.05" value="22.5">
+    <output id="ctlClock">22:30 周五</output>
+  </div>
+  <div class="p-row">
+    <label>自流</label>
+    <label class="switch"><input id="ctlAuto" type="checkbox"><i></i></label>
+    <select id="ctlSpeed">
+      <option value="0.0167">缓慢</option>
+      <option value="0.1" selected>正常</option>
+      <option value="0.6">飞快</option>
+    </select>
+  </div>
+  <div class="p-row p-wrap">
+    <label>天气</label>
+    <div class="wgrid">
+      <button class="wbtn" data-w="sun" type="button">☀ 晴</button>
+      <button class="wbtn" data-w="cloud" type="button">⛅ 多云</button>
+      <button class="wbtn" data-w="rain" type="button">🌧 小雨</button>
+      <button class="wbtn" data-w="storm" type="button">⛈ 暴雨</button>
+      <button class="wbtn" data-w="snow" type="button">❄ 雪</button>
+      <button class="wbtn" data-w="fog" type="button">🌫 雾</button>
+    </div>
+  </div>
+  <div class="p-row">
+    <label>强度</label>
+    <input id="ctlInt" type="range" min="0.05" max="1" step="0.01" value="0.7">
+  </div>
+  <div class="p-row p-wrap">
+    <label>季节</label>
+    <div class="sgrid">
+      <button class="sbtn" data-s="spring" type="button">春</button>
+      <button class="sbtn" data-s="summer" type="button">夏</button>
+      <button class="sbtn on" data-s="autumn" type="button">秋</button>
+      <button class="sbtn" data-s="winter" type="button">冬</button>
+    </div>
+  </div>
+  <div class="p-keys">1-6 天气 · ←→ 时间 · H 收起面板</div>
+</div>
+<button id="panelIcon" type="button" title="控制面板 (H)" aria-label="控制面板"></button>
+
+<div id="toast"></div>
+<div id="err"></div>
+
+<script>
+/*__THREE__*/
+</script>
+<script>
+/*__GAME__*/
+</script>
+</body>
+</html>
