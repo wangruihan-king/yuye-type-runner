@@ -2,6 +2,23 @@
 
 用单词守住雨夜东京的灯火。默认“护灯闯关”把回忆拼写变成攻击、认义变成闪避，带着六词卡组击退三处影怪。保留 3D 街区、天气、昼夜系统，以及独立的词汇训练模式。
 
+![主菜单](screenshots/menu.jpg)
+
+## 在线游玩（即点即玩）
+
+- **国内入口（腾讯云）**：<https://yuye-hbjywrjkczx-d2g39jsk6f83b8d24.webapps.tcloudbase.com>
+- **镜像（GitHub Pages）**：<https://wangruihan-king.github.io/yuye-type-runner/>
+- 词库可选：**四级真题高频 1417 词**（按真题句频排序）与 **雅思词汇真经 3629 词**（含音标与原书序号），菜单里一键切换。
+
+<p>
+  <img src="screenshots/quest-boss.jpg" width="49%" alt="Boss 战：用单词瞄准影怪">
+  <img src="screenshots/ielts-bank.jpg" width="49%" alt="词库切换：雅思词汇真经">
+</p>
+<p>
+  <img src="screenshots/play.jpg" width="49%" alt="雨夜东京街区">
+  <img src="screenshots/character.jpg" width="49%" alt="蓝鲸女仆角色三视图">
+</p>
+
 ## 打开游戏
 
 双击本目录的 `index.html` 即可，无需安装依赖。背景音乐来自同目录 `audio/`；浏览器朗读依赖系统英语语音，部分语音需要网络。推荐在桌面 Chrome 或 Edge 中使用英文输入法。
@@ -27,11 +44,13 @@
 
 ## 词汇训练与记忆
 
+菜单的“词库”可选择“四级真题高频”或“雅思词汇真经”。雅思词库来自你提供的同名 PDF，包含全部 3,629 个词条，保留原中文释义、音标和原书序号。所有游戏模式使用所选词库，选择会保存；共有单词沿用已有复习进度。短语中的空格与连字符自动补齐，只需输入字母。词库已内嵌到 `index.html`，运行时无需 PDF 或网络。
+
 另有“记忆训练”“中文回忆”“字形练习”“听写练习”，每次最多 10 词。记忆训练先展示新词，再隐藏英文回忆；错误、跳过或使用提示的词隔几题重现，最多重试两次。
 
 独立回忆成功后按 1、3、7、14、30 天安排复习；同局重复或提前练习不会跳过等级、推迟原复习日期。看词打字只计为字形练习，手帐中的“熟悉”需要至少三次按期回忆。闯关中的独立拼写也会保存学习记录，认义错误会将对应词标为待复习。
 
-结束后可点击单词朗读，或复习尚未记住的词。学习记录保存在本机浏览器中；不同浏览器、不同打开地址不共享进度。内置 1417 个去重词条，包含四级高频词与日常精选词，部分词配有简短例句。
+结束后可点击单词朗读，或复习尚未记住的词。学习记录保存在本机浏览器中；不同浏览器、不同打开地址不共享进度。内置两套词库：四级真题高频 1417 词（去重，含日常精选词与例句）与雅思词汇真经 3629 词。
 
 ## 操作
 
@@ -59,6 +78,7 @@
 node build.mjs
 node scripts/verify-learning.mjs
 node scripts/verify-quest.mjs
+node scripts/verify-words.mjs
 ```
 
 浏览器集成验证使用本机 Chrome 和 Node 内置 CDP 客户端，无第三方依赖：
@@ -66,6 +86,7 @@ node scripts/verify-quest.mjs
 ```sh
 node scripts/verify-browser.mjs
 node scripts/verify-browser.mjs --quest
+node scripts/verify-browser.mjs --ielts --quest
 ```
 
 该脚本在后台启动 Chrome，检查输入、暂停、完整训练、错词重试、持久化、小屏输入和离线入口。`--quest` 额外检查实战伤害、护盾、影弹、技能消耗、认义、Boss、胜负和手机布局；纯规则测试覆盖提示代价、弱词护甲、时限与封印条件。截图写入 `.test-artifacts/`。Chrome 路径在脚本中配置为 Windows 默认安装位置。
@@ -73,6 +94,7 @@ node scripts/verify-browser.mjs --quest
 ## 代码
 
 - `words.js`：词库与部分例句。
+- `ielts-words.js`：用户提供的《雅思词汇真经》PDF 词条、音标和来源序号；不依赖外部加载。
 - `learning.js`：选词、阶段队列、错词重试与间隔复习。
 - `quest-rules.js`：闯关状态、战斗资源、认义闪避、遗忘护甲与最终封印。
 - `quest.js`：战况界面、立体影怪、影弹与技能效果、通关纪录。
@@ -85,6 +107,11 @@ node scripts/verify-browser.mjs --quest
 - `template.html`、`style.css`：界面和布局。
 - `build.mjs`：将源码、Three.js 与表情资源内联到入口 HTML。
 
-角色使用可绕行观察的真实三维几何，面部、刺绣和围裙图案由 Canvas 绘制。参考图保留在素材目录，游戏运行时不依赖它的加载。
+角色使用可绕行观察的真实三维几何。头部按脸颊、下巴和鼻子的轮廓重新雕塑，蓝眼睛与表情贴合面部曲面；长发由层叠的 S 形渐变卷发组成。头饰、袖口、围裙与裙摆采用折叠布面和镂空蕾丝，鞋子补充鞋跟、鞋带和鞋底缝线；后腰蝴蝶结带垂落折痕，鲸尾与尾鳍连续衔接。静态细节按材质合并网格，保留关节与发束的独立运动。表情、蕾丝、刺绣和围裙图案由 Canvas 绘制，参考图保留在素材目录，游戏运行时不依赖它的加载。
 
-运行 `node scripts/verify-browser.mjs --character` 可额外生成角色三视图和走路 APNG 预览，并检查迈步时脚部高度。输出为 `.test-artifacts/character-turnaround.png` 与 `.test-artifacts/character-walk.png`。
+运行 `node scripts/verify-browser.mjs --character` 在完整验证中增加角色检查；`node scripts/verify-browser.mjs --character-only` 只验证角色并生成预览。检查包括有限的模型边界、低于 13 万三角形的几何预算、步态脚部高度，以及施法时的手部位置。预览写入 `.test-artifacts/`：
+
+- `character-turnaround.png`：正面、侧面和背面。
+- `character-details.png`：面部头饰、领结围裙、后腰蝴蝶结与鲸尾。
+- `character-actions.png`：出击、护灯和鲸潮姿势。
+- `character-walk.png`：走路 APNG；`character-walk-frame.png` 为单帧预览。

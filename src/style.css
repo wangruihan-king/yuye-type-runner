@@ -439,7 +439,9 @@ body[data-state=over] #toast{visibility:hidden}
 .stl{width:clamp(20px,3vw,38px);height:46px;font-family:var(--mono);font-size:23px;background:rgba(136,169,158,.09);border:1px solid rgba(187,218,201,.13);border-bottom:2px solid rgba(187,218,201,.3);border-radius:5px;color:#d7dfd6;flex-shrink:1}
 .stl.cur{background:rgba(169,231,208,.13);border-color:var(--cyan);color:var(--cyan);transform:translateY(-2px);box-shadow:none}.stl.done{background:rgba(169,231,208,.22);border-color:#729e8a;color:var(--cyan)}
 .stl.miss{background:rgba(232,155,139,.4);border-color:var(--red)}
-.answer-word{font-family:var(--mono);font-size:30px;color:var(--cyan);letter-spacing:2px}
+.stl{min-width:0}
+.stl.separator{flex:0 0 8px;width:8px;background:transparent;border:0;font-size:16px}
+.answer-word{font-family:var(--mono);font-size:30px;color:var(--cyan);letter-spacing:2px;max-width:100%;overflow-wrap:anywhere}
 #stFeedback{font-size:11px;color:#b4c5ba;text-align:center;line-height:1.5}#stExample{font-family:var(--mono);font-size:11px;line-height:1.6;color:#c3cfbb;text-align:center}#stExample:empty{display:none}
 .word-time{width:100%;height:2px}.word-time i{transition:width .1s linear}
 .station-actions{display:flex;gap:18px;justify-content:center;width:100%;padding-top:2px}

@@ -14,11 +14,11 @@ G.DIFF = {
   mid:  { ivMul: 1,    label: '标准', hint: '100 灯火，240 秒战斗时间。需要兼顾出击、护盾和词义闪避。' },
   high: { ivMul: .78,  label: '困难', hint: '85 灯火，180 秒战斗时间；敌人更坚韧，影弹更密集。' },
 };
-const BANK_LABEL = { cet4: '四级真题高频' };
+const BANK_LABEL = { cet4: '四级真题高频', ielts: '雅思词汇真经' };
 const MODE_LABEL = { quest: '护灯闯关', learn: '记忆训练', recall: '中文回忆', spell: '字形练习', hear: '听写练习' };
 let _cfg = { bank: 'cet4', diff: 'mid', mode: 'quest' };
 try { _cfg = Object.assign(_cfg, JSON.parse(localStorage.getItem('tr-cfg') || '{}')); } catch (e) {}
-_cfg.bank = 'cet4';   // 仅保留四级词库
+if (!G.words.banks[_cfg.bank]) _cfg.bank = 'cet4';
 if (!G.DIFF[_cfg.diff]) _cfg.diff = 'mid';
 if (!MODE_LABEL[_cfg.mode]) _cfg.mode = 'learn';
 if (_cfg.gameplayVersion !== 2) { _cfg.mode = 'quest'; _cfg.gameplayVersion = 2; }
@@ -117,8 +117,8 @@ function showPanel(id) {
 }
 function syncMenuTags() {
   $('diffTag').textContent = G.DIFF[_cfg.diff].label;
-  $('bankTag').textContent = G.words.banks[_cfg.bank].length + ' 词';
-  $('bankTag').title = BANK_LABEL[_cfg.bank] + ' · 非完整考纲词表';
+  $('bankTag').textContent = BANK_LABEL[_cfg.bank];
+  $('bankTag').title = G.words.banks[_cfg.bank].length + ' 个词条';
   $('modeTag').textContent = MODE_LABEL[_cfg.mode];
   $('rowStart').querySelector('.cn').textContent = _cfg.mode === 'quest' ? '出发，迎战遗忘' : '开始' + MODE_LABEL[_cfg.mode];
   const meta = document.querySelectorAll('.session-meta span');
@@ -126,6 +126,7 @@ function syncMenuTags() {
   meta[1].textContent = _cfg.mode === 'quest' ? '出击 / 护盾 / 鲸潮' : '认识 → 回忆 → 复习';
   document.querySelectorAll('#spDiff button').forEach(b => b.classList.toggle('on', b.dataset.diff === _cfg.diff));
   document.querySelectorAll('#spBank button').forEach(b => b.classList.toggle('on', b.dataset.bank === _cfg.bank));
+  if ($('bankTip')) $('bankTip').textContent = _cfg.bank === 'ielts' ? '来自你提供的《雅思词汇真经》PDF，共 3629 个词条，保留原中文释义。短语的空格和连字符自动补齐，只需输入字母。' : '四级真题高频词，部分单词配有游戏场景例句。';
   document.querySelectorAll('#spMode button[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === _cfg.mode));
   document.querySelectorAll('#spMode [data-accent]').forEach(b => b.classList.toggle('on', b.dataset.accent === (_cfg.accent || 'us')));
   $('diffHint').textContent = G.DIFF[_cfg.diff].hint;
@@ -159,11 +160,12 @@ function initMenu() {
     const b = document.createElement('button');
     b.dataset.bank = k;
     b.textContent = BANK_LABEL[k] + '（' + G.words.banks[k].length + ' 词）';
-    b.addEventListener('click', () => { _cfg.bank = k; G.saveCfg(); syncMenuTags(); });
+    b.addEventListener('click', () => { _cfg.bank = k; G.saveCfg(); syncMenuTags(); refreshRecards(); });
     b.addEventListener('mouseenter', () => G.audio.hover());
     bankBox.appendChild(b);
   }
   const bankTip = document.createElement('p');
+  bankTip.id = 'bankTip';
   bankTip.textContent = '四级真题高频词（按真题句频排序），部分单词配有游戏场景例句。';
   bankBox.appendChild(bankTip);
   toggleRow('rowBank', 'spBank');
@@ -268,7 +270,7 @@ function endStroll() {
   for (const w of session.selected) {
     const r = session.results.get(w.w);
     const item = document.createElement('button'); item.type = 'button'; item.className = 'summary-word';
-    const en = document.createElement('strong'); en.textContent = w.w;
+    const en = document.createElement('strong'); en.textContent = w.display || w.w;
     const zh = document.createElement('span'); zh.textContent = w.zh;
     const label = document.createElement('small');
     label.textContent = r?.status === 'remembered' ? '已回忆 ✓' : r?.status === 'practiced' ? '已练习' : '待记忆';

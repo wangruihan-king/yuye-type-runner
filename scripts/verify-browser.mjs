@@ -6,6 +6,8 @@ import assert from 'node:assert/strict';
 
 const root = resolve(import.meta.dirname, '..');
 const artifacts = resolve(root, '.test-artifacts');
+const characterOnly = process.argv.includes('--character-only');
+const characterPreview = characterOnly || process.argv.includes('--character');
 await mkdir(artifacts, { recursive: true });
 const server = createServer(async (req, res) => {
   try {
@@ -105,7 +107,33 @@ try {
   await sleep(1200);
   assert.equal(await evaluate('document.querySelector("#err").textContent'), '', 'No initialization/render errors');
   await screenshot('menu-desktop');
-  if (process.argv.includes('--quest')) {
+  if (process.argv.includes('--ielts')) {
+    await evaluate(`document.querySelector('#rowBank').click(); document.querySelector('#spBank [data-bank="ielts"]').click();`);
+    assert.equal(await evaluate('G.cfg.bank'), 'ielts');
+    assert.equal(await evaluate('G.learning.overview().total'), 3629);
+    await screenshot('ielts-bank-menu');
+    await call('Page.reload');
+    for(let n=0;n<50;n++) { if(await evaluate('!!window.__G && document.readyState === "complete"')) break; await sleep(300); }
+    assert.equal(await evaluate('G.cfg.bank'), 'ielts', 'Bank selection persists');
+    await evaluate(`__G.start(false,['carbon dioxide'],'recall'); G.game.countdown=-1; G.typing.update(1); for(const ch of 'carbon')G.typing.key(ch);`);
+    assert.equal(await evaluate('G.typing.locked.typed'), 7, 'Space automatically completed');
+    await evaluate('G.typing.backspace()');
+    assert.equal(await evaluate('G.typing.locked.typed'), 5, 'Backspace crosses separator');
+    await evaluate(`for(const ch of 'ndioxide')G.typing.key(ch);`);
+    assert.equal(await evaluate('G.typing.locked === null'), true);
+    assert.equal(await evaluate('G.typing.stats.chars'), 13, 'Only letters count toward WPM');
+    await call('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true});
+    await evaluate(`__G.menu(); __G.start(false,['high-definition'],'recall'); G.game.countdown=-1; G.typing.update(1);`);
+    await screenshot('ielts-mobile');
+    assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'IELTS mobile page fits');
+    assert.equal(await evaluate(`(()=>{const a=document.querySelector('#stLetters').getBoundingClientRect();return [...document.querySelector('#stLetters').children].every(e=>e.getBoundingClientRect().right<=a.right+1);})()`), true, 'Phrase tiles fit mobile station');
+    await evaluate(`for(const ch of 'highdefinition')G.typing.key(ch);`);
+    assert.equal(await evaluate('G.typing.locked === null'), true, 'Hyphen automatically completed');
+    await evaluate(`__G.menu(); document.querySelector('#rowBank').click(); document.querySelector('#spBank [data-bank="cet4"]').click();`);
+    await call('Emulation.setDeviceMetricsOverride', {width:1440,height:900,deviceScaleFactor:1,mobile:false});
+    console.log('IELTS browser checks passed: selection, persistence, phrases, backspace, WPM and mobile.');
+  }
+  if (!characterOnly && process.argv.includes('--quest')) {
     await evaluate(`(() => {
       G.cfg.mode='quest'; G.cfg.diff='mid'; __G.start(); G.game.countdown=-1;
       for(let n=0;n<12;n++) {
@@ -200,12 +228,14 @@ try {
     console.log('Campaign browser checks passed:',victory);
     await evaluate('__G.menu()');
   }
-  if (process.argv.includes('--character')) {
+  if (characterPreview) {
     const characterInfo = await evaluate(`(() => {
       const player = G.actors.player;
       const model = player.root;
       let triangles = 0, meshes = 0;
       model.traverse(o => { if(o.isMesh) { meshes++; triangles += (o.geometry.index?.count || o.geometry.attributes.position.count) / 3; } });
+      model.updateMatrixWorld(true);
+      const bounds = new THREE.Box3().setFromObject(model), size = bounds.getSize(new THREE.Vector3());
       const scene = new THREE.Scene(); scene.background = new THREE.Color('#e7eae9');
       scene.add(new THREE.HemisphereLight('#ffffff', '#91a0b4', .95));
       const light = new THREE.DirectionalLight('#fff4e4', 1.15); light.position.set(-3, 5, -4); scene.add(light);
@@ -224,15 +254,68 @@ try {
       const camera = new THREE.PerspectiveCamera(26,1440/900,.01,100);
       camera.position.set(0,1.18,-7.2); camera.lookAt(0,1.04,0);
       const canvas = renderer.domElement; canvas.style.cssText='position:fixed;inset:0;width:100vw;height:100vh;z-index:9999'; document.body.appendChild(canvas);
-      renderer.render(scene,camera); window.characterStudio = {canvas,renderer,scene,camera,clones};
-      return {name:model.userData.character.name,meshes,triangles,features:model.userData.character.features};
+      const label=titles=> {
+        const caption=document.createElement('div');
+        caption.style.cssText='position:fixed;left:0;right:0;top:0;height:64px;box-sizing:border-box;padding-top:22px;z-index:10000;display:grid;grid-template-columns:repeat(3,1fr);text-align:center;color:#303957;background:#eff1f0;border-bottom:1px solid #d4dadb;font:600 20px system-ui;pointer-events:none';
+        for(const title of titles) { const span=document.createElement('span'); span.textContent=title; caption.appendChild(span); }
+        document.body.appendChild(caption); return caption;
+      };
+      renderer.render(scene,camera); window.characterStudio = {canvas,renderer,scene,camera,clones,label};
+      window.characterStudio.caption=label(['正面','侧面','背面']);
+      return {name:model.userData.character.name,meshes,triangles,features:model.userData.character.features,
+        bounds:{min:bounds.min.toArray(),max:bounds.max.toArray(),size:size.toArray()}};
     })()`);
     await screenshot('character-turnaround');
+    await evaluate('characterStudio.caption.remove()');
     console.log('Character:', characterInfo);
     assert.ok(characterInfo.features.includes('whale-tail'));
+    assert.ok(characterInfo.meshes > 0 && characterInfo.triangles > 0, 'Character has rendered geometry');
+    assert.ok(characterInfo.triangles < 130000, 'Character stays below the 130,000 triangle budget');
+    assert.ok(Object.values(characterInfo.bounds).flat().every(Number.isFinite), 'Model bounds are finite');
+    assert.ok(characterInfo.bounds.size.every(v => v > 0), 'Model has three-dimensional bounds');
+    await call('Emulation.setDeviceMetricsOverride', { width: 1440, height: 720, deviceScaleFactor: 1, mobile: false });
+    await evaluate(`(() => {
+      const s=characterStudio, p=G.actors.player;
+      s.clones.forEach(c=>s.scene.remove(c));
+      s.renderer.setSize(1440,720);
+      s.detail=p.root.clone(true); s.detail.position.set(0,0,0); s.detail.rotation.set(0,0,0); s.scene.add(s.detail);
+      const originalNodes=[], detailNodes=[];
+      p.root.traverse(n=>originalNodes.push(n)); s.detail.traverse(n=>detailNodes.push(n));
+      const copyOf=node=>detailNodes[originalNodes.indexOf(node)];
+      const centre=(names,fallback)=> {
+        const box=new THREE.Box3(); let found=false;
+        for(const name of names) { const node=s.detail.getObjectByName(name); if(node) { box.union(new THREE.Box3().setFromObject(node)); found=true; } }
+        return found ? box.getCenter(new THREE.Vector3()) : fallback;
+      };
+      s.detail.updateMatrixWorld(true);
+      const head=centre(['painted-anime-face','face-volume'],new THREE.Vector3(0,1.65,-.18));
+      head.y+=.045;
+      const apron=centre(['pleated-white-bib','whale-apron','waistband'],new THREE.Vector3(0,1.03,-.2));
+      const rearBox=new THREE.Box3();
+      for(const node of [copyOf(p.backBow),s.detail.getObjectByName('curved-whale-tail'),s.detail.getObjectByName('tail-fluke')]) {
+        if(node) rearBox.union(new THREE.Box3().setFromObject(node));
+      }
+      const rear=rearBox.isEmpty() ? new THREE.Vector3(.2,.91,.3) : rearBox.getCenter(new THREE.Vector3());
+      const views=[{target:head,offset:[.6,.06,-2.1],fov:30},
+        {target:apron,offset:[.16,.03,-1.75],fov:34},
+        {target:rear,offset:[-.9,.21,2.45],fov:34}];
+      s.renderer.setScissorTest(true);
+      views.forEach((view,i)=> {
+        s.renderer.setViewport(i*480,0,480,720); s.renderer.setScissor(i*480,0,480,720);
+        s.camera.aspect=480/720; s.camera.fov=view.fov;
+        s.camera.position.copy(view.target).add(new THREE.Vector3(...view.offset)); s.camera.lookAt(view.target);
+        s.camera.updateProjectionMatrix(); s.renderer.render(s.scene,s.camera);
+      });
+      s.caption=s.label(['面部与头饰','领结与鲸鱼围裙','后腰蝴蝶结与鲸尾']);
+    })()`);
+    await screenshot('character-details');
+    await evaluate(`(() => {
+      const s=characterStudio; s.scene.remove(s.detail); s.caption.remove();
+      s.renderer.setScissorTest(false); s.renderer.setViewport(0,0,1440,900);
+    })()`);
     await call('Emulation.setDeviceMetricsOverride', { width: 540, height: 640, deviceScaleFactor: 1, mobile: false });
     await evaluate(`(() => {
-      const s=characterStudio; s.clones.forEach(c=>s.scene.remove(c));
+      const s=characterStudio;
       s.walk=G.actors.player.root.clone(true); s.scene.add(s.walk);
       s.originalNodes=[]; s.walkNodes=[]; G.actors.player.root.traverse(n=>s.originalNodes.push(n)); s.walk.traverse(n=>s.walkNodes.push(n));
       s.renderer.setSize(540,640); s.camera.aspect=540/640; s.camera.fov=32;
@@ -241,7 +324,7 @@ try {
     const frames=[];
     for(let frame=0;frame<32;frame++) {
       await evaluate(`(() => {
-        const p=G.actors.player, s=characterStudio; G.game.state='play'; p.speed=1.1; p.walkBlend=1; p.ph=${frame}/32*Math.PI*2;
+        const p=G.actors.player, s=characterStudio; G.game.state='play'; p.speed=1.1; p.walkBlend=1; p.ph=${frame}/32*Math.PI*2; p.castT=0;
         G.actors.update(0);
         s.walkNodes.forEach((n,i)=>{const original=s.originalNodes[i]; n.position.copy(original.position); n.quaternion.copy(original.quaternion); n.scale.copy(original.scale);});
         s.walk.position.set(0,0,0); s.walk.rotation.set(0,0,0); s.renderer.render(s.scene,s.camera);
@@ -250,10 +333,48 @@ try {
     }
     await writeFile(resolve(artifacts,'character-walk.png'),animatedPNG(frames));
     await writeFile(resolve(artifacts,'character-walk-frame.png'),frames[6]);
-    await evaluate(`characterStudio.canvas.remove(); characterStudio.renderer.dispose(); delete window.characterStudio;`);
+    await call('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    const actions=await evaluate(`(() => {
+      const s=characterStudio; s.scene.remove(s.walk);
+      G.cfg.mode='quest'; __G.start(); G.game.countdown=-1; G.quest.run.phase='fight';
+      const p=G.actors.player; p.speed=0; p.walkBlend=0; p.ph=0; p.castT=0; G.quest.run.stance='strike'; G.actors.update(0);
+      const handNodes=p.arms.map(arm=>arm.hand || arm.elbow.getObjectByName('hand'));
+      if(handNodes.some(node=>!node)) throw new Error('Character rig must expose named hands for pose checks');
+      const hands=()=> {
+        p.root.updateMatrixWorld(true);
+        return handNodes.map((node,i)=> {
+          const hand=node.getWorldPosition(new THREE.Vector3()), shoulder=p.arms[i].shoulder.getWorldPosition(new THREE.Vector3());
+          return {world:hand.toArray(),shoulderDistance:hand.distanceTo(shoulder)};
+        });
+      };
+      const idle=hands(), poses=[];
+      const kinds=['strike','guard','surge'];
+      kinds.forEach((kind,index)=> {
+        G.quest.run.stance=kind==='guard'?'guard':'strike'; p.castKind=kind; p.castT=.35; G.actors.update(0);
+        poses.push({kind,hands:hands()});
+        const clone=p.root.clone(true), originals=[], nodes=[];
+        p.root.traverse(node=>originals.push(node)); clone.traverse(node=>nodes.push(node));
+        nodes.forEach((node,i)=> { const original=originals[i]; node.position.copy(original.position); node.quaternion.copy(original.quaternion); node.scale.copy(original.scale); });
+        clone.position.set(1.45-index*1.45,0,0); clone.rotation.set(0,0,0); s.scene.add(clone);
+      });
+      s.renderer.setSize(1440,900); s.renderer.setViewport(0,0,1440,900);
+      s.camera.aspect=1440/900; s.camera.fov=26; s.camera.position.set(0,1.18,-7.2); s.camera.lookAt(0,1.04,0); s.camera.updateProjectionMatrix();
+      s.renderer.render(s.scene,s.camera);
+      s.caption=s.label(['出击','护灯','鲸潮']); p.castT=0; __G.menu();
+      return {idle,poses};
+    })()`);
+    await screenshot('character-actions');
+    for(const pose of actions.poses) {
+      assert.ok(pose.hands.every(hand=>hand.world.every(Number.isFinite)), pose.kind+' hands have finite world positions');
+      assert.ok(pose.hands.every(hand=>hand.shoulderDistance>.1 && hand.shoulderDistance<.8), pose.kind+' keeps hands attached to the arms');
+      const movements=pose.hands.map((hand,i)=>Math.hypot(...hand.world.map((v,axis)=>v-actions.idle[i].world[axis])));
+      assert.ok(Math.max(...movements)>.06, pose.kind+' visibly changes the hand pose');
+    }
+    console.log('Character action hand positions:',JSON.stringify(actions));
+    await evaluate(`characterStudio.caption?.remove(); characterStudio.canvas.remove(); characterStudio.renderer.dispose(); delete window.characterStudio;`);
     await call('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     const gait = await evaluate(`(() => {
-      const p=G.actors.player; G.game.state='play'; p.speed=1.1; p.walkBlend=1;
+      const p=G.actors.player; G.game.state='play'; p.speed=1.1; p.walkBlend=1; p.castT=0;
       const result=[]; const v=new THREE.Vector3();
       for(let i=0;i<8;i++) { p.ph=i/8*Math.PI*2; G.actors.update(0); p.root.updateMatrixWorld(true);
         result.push(p.legs.map(l=> { l.ankle.getWorldPosition(v); return {y:+v.y.toFixed(3),z:+v.z.toFixed(3)}; }));
@@ -264,6 +385,9 @@ try {
     assert.ok(gait.flat().some(p=>p.y>.17),'Swing foot lifts');
     console.log('Gait ankle positions:', gait);
   }
+  if (characterOnly) {
+    console.log('Character-only browser checks passed. Previews: .test-artifacts/');
+  } else {
   const definitions = await evaluate(`({ count: G.words.LIST.length, unique: new Set(G.words.LIST.map(e=>e.w)).size, letters: [...new Set(G.words.LIST.map(e=>e.w[0]))].sort().join('') })`);
   assert.equal(definitions.count, definitions.unique, 'Unique dictionary entries');
   console.log('Dictionary:', definitions);
@@ -357,7 +481,9 @@ try {
   assert.equal(await evaluate('!!window.__G'), true, 'Offline double-click entry initializes');
   assert.equal(await evaluate('document.querySelector("#err").textContent'), '', 'Offline game has no startup errors');
   console.log('Browser checks passed. Screenshots: .test-artifacts/');
+  }
 } finally {
   try { if (socket?.readyState === 1) await call('Browser.close'); } catch (_) {}
   socket?.close(); chrome.kill(); server.close();
 }
+

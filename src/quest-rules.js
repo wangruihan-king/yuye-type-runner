@@ -52,7 +52,7 @@ class QuestRun {
   }
   forget(t) {
     const newlyWrong = !this.wrong.has(t.w);
-    this.wrong.set(t.w, { w: t.w, zh: t.zh, example: t.example });
+    this.wrong.set(t.w, { w: t.w, zh: t.zh, example: t.example, display: t.display, ipa: t.ipa });
     this.remembered.delete(t.w);
     if (newlyWrong && this.wave === 2 && this.phase === 'fight') this.armour = Math.min(32, this.armour + 8);
   }

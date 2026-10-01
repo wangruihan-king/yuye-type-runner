@@ -5,7 +5,7 @@ let html = r('./template.html');
 const three = r('./lib/three.min.js');
 const exprB64 = 'data:image/png;base64,' + readFileSync(new URL('./assets/expr.png', import.meta.url)).toString('base64');
 const game = [
-  './src/words.js', './src/core.js', './lib/refworld.js', './src/env.js', './src/city.js',
+  './src/words.js', './src/ielts-words.js', './src/core.js', './lib/refworld.js', './src/env.js', './src/city.js',
   './src/character.js', './src/actors.js', './src/learning.js', './src/quest-rules.js', './src/quest.js', './src/typing.js', './src/main.js',
 ].map(r).join('\n;\n').replace('__EXPR_DATA__', () => exprB64);
 const css = r('./src/style.css');

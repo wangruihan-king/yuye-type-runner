@@ -10,3 +10,6 @@ ref/
 node_modules/
 Thumbs.db
 .DS_Store
+
+# 工具链内部状态
+.mimosa/

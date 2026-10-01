@@ -67,7 +67,7 @@ G.actors = {
       arm.elbow.rotation.x = .13 + Math.max(0, -swing) * .09 * blend;
       arm.elbow.rotation.y = arm.baseZ * .15;
       if (guarding) { arm.shoulder.rotation.x += .22 * (1 - blend); arm.elbow.rotation.x -= .35 * (1 - blend); }
-      if (P.castKind === 'guard') { arm.shoulder.rotation.x += casting * 1.1; arm.elbow.rotation.x -= casting * 1.15; }
+      if (P.castKind === 'guard') { arm.shoulder.rotation.x += casting * 1.1; arm.elbow.rotation.x -= casting * .20; }
       else { arm.shoulder.rotation.x += casting * (P.castKind === 'surge' || i === 1 ? 1.35 : .18); }
     }
     P.spine.rotation.x += casting * .07;

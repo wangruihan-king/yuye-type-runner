@@ -71,7 +71,7 @@ G.learning = {
         session.results.set(t.w, { ...t, status: 'review' }); session.completed = session.results.size;
       } else if (t.attempt < 2) {
         session.queue.splice(Math.min(3, session.queue.length), 0,
-          { entry: { w: t.w, zh: t.zh, example: t.example }, stage: 'recall', attempt: t.attempt + 1 });
+          { entry: { w: t.w, zh: t.zh, example: t.example, display: t.display, ipa: t.ipa }, stage: 'recall', attempt: t.attempt + 1 });
       } else {
         session.results.set(t.w, { ...t, status: 'review' });
         session.completed++;
@@ -86,7 +86,7 @@ G.learning = {
     session.results.set(t.w, { ...t, status: 'review' }); session.completed = session.results.size; save();
   },
   overview() {
-    const bank = G.words.LIST;
+    const bank = G.words.banks[G.cfg.bank] || G.words.LIST;
     const seen = bank.filter(e => validRecord(e.w));
     return { seen: seen.length, mastered: seen.filter(e => validRecord(e.w).level >= 3).length,
       due: seen.filter(e => validRecord(e.w).due <= Date.now()).length, total: bank.length };

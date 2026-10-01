@@ -9,6 +9,7 @@ const hidden = t => !t.hinted && (mode() === 'hear' || mode() === 'recall' ||
   ((mode() === 'learn' || mode() === 'quest') && t.stage === 'recall'));
 function render(t) {
   const conceal = hidden(t);
+  const spelling = t.display || t.w;
   const meaningTask = t.kind === 'meaning';
   $('meaningChoices').hidden = !meaningTask;
   $('stLetters').hidden = meaningTask;
@@ -18,7 +19,7 @@ function render(t) {
   $('station').classList.add('on');
   if (meaningTask) {
     $('stStage').textContent = '词义闪避 · 选对中文，躲开下一枚影弹';
-    $('stMean').textContent = t.w;
+    $('stMean').textContent = spelling;
     $('stFeedback').textContent = '按 1 / 2 / 3 选择 · 英文与含义必须连起来';
     $('stExample').textContent = '';
     $('wordTimer').style.width = (t.remaining / t.duration * 100) + '%';
@@ -33,8 +34,8 @@ function render(t) {
     return;
   }
   t.letters.forEach((el, i) => {
-    el.textContent = i < t.typed || !conceal ? t.w[i] : '·';
-    el.className = 'l' + (i < t.typed ? ' hit' : conceal ? ' blank' : '');
+    el.textContent = !/[a-z]/.test(t.w[i]) || i < t.typed || !conceal ? spelling[i] : '·';
+    el.className = 'l' + (i < t.typed ? ' hit' : conceal && /[a-z]/.test(t.w[i]) ? ' blank' : '');
   });
   $('stMean').textContent = t.zh;
   $('stStage').textContent = t.stage === 'discover' ? '初见 · 看词认识它' : t.attempt ? '再遇 · 试着想起来' : '回忆 · 把单词带回家';
@@ -44,13 +45,15 @@ function render(t) {
   $('stLetters').replaceChildren();
   for (let i = 0; i < t.w.length; i++) {
     const d = document.createElement('span');
-    d.className = 'stl' + (i < t.typed ? ' done' : i === t.typed ? ' cur' : '');
-    d.textContent = i < t.typed || !conceal ? t.w[i] : '';
+    const separator = !/[a-z]/.test(t.w[i]);
+    d.className = 'stl' + (separator ? ' separator' : i < t.typed ? ' done' : i === t.typed ? ' cur' : '');
+    d.textContent = separator ? (t.w[i] === ' ' ? '·' : spelling[i]) : i < t.typed || !conceal ? spelling[i] : '';
     $('stLetters').appendChild(d);
   }
   $('stFeedback').textContent = t.hinted ? '答案已亮起，稍后会再遇到它' : conceal ? '根据中文回忆拼写，想不起来可以看提示' : '读一遍意思，再敲出单词';
   if (mode() === 'hear' && !t.hinted) $('stFeedback').textContent = '听音拼写 · TAB 重听 · 想不起来可以看提示';
-  $('stExample').textContent = !conceal && t.example ? t.example : '';
+  if (/[^a-z]/.test(t.w)) $('stFeedback').textContent += ' · 空格和连字符自动补齐';
+  $('stExample').textContent = !conceal ? t.example || t.ipa || '' : '';
   $('wordTimer').style.width = (t.remaining / t.duration * 100) + '%';
 }
 function spawn() {
@@ -63,7 +66,8 @@ function spawn() {
   t.duration = (16 + t.w.length * 1.8) * D;
   if (t.quest && t.stage !== 'discover') t.duration = (t.kind === 'meaning' ? 7 : 9 + t.w.length * .75) * D;
   if (t.kind === 'meaning') {
-    const decoys = G.learning.shuffle(G.words.LIST.filter(e => e.zh !== t.zh)).slice(0, 2);
+    const bank = G.words.banks[G.cfg.bank] || G.words.LIST;
+    const decoys = G.learning.shuffle([...new Map(bank.filter(e => e.w !== t.w && e.zh !== t.zh).map(e => [e.zh, e])).values()]).slice(0, 2);
     t.options = G.learning.shuffle([{ w: t.w, zh: t.zh }, ...decoys]);
   }
   t.retrieval = hidden(t);
@@ -90,10 +94,10 @@ function finish(t, success) {
   $('stLetters').replaceChildren();
   $('stLetters').hidden = false; $('meaningChoices').hidden = true;
   $('mobileEntry').hidden = false;
-  const answer = document.createElement('strong'); answer.className = 'answer-word'; answer.textContent = t.w;
+  const answer = document.createElement('strong'); answer.className = 'answer-word'; answer.textContent = t.display || t.w;
   $('stLetters').appendChild(answer);
   $('stFeedback').textContent = t.zh;
-  $('stExample').textContent = t.example || '';
+  $('stExample').textContent = t.example || t.ipa || '';
   $('wordTimer').style.width = '100%'; $('timerLabel').textContent = '';
   if (success) {
     S.wordsDone++;
@@ -132,7 +136,8 @@ G.typing = {
   skip() { if (S.locked) finish(S.locked, false); },
   backspace() {
     const t = S.locked; if (!t || !t.typed || t.kind === 'meaning') return;
-    t.typed--; S.chars = Math.max(0, S.chars - 1); render(t);
+    do { t.typed--; } while (t.typed > 0 && !/[a-z]/.test(t.w[t.typed]));
+    S.chars = Math.max(0, S.chars - 1); render(t);
   },
   nearWord() { return !!S.locked && (hidden(S.locked) || S.locked.remaining < 10); },
   key(ch) {
@@ -147,7 +152,9 @@ G.typing = {
       if (tile) { tile.classList.add('miss'); setTimeout(() => tile.classList.remove('miss'), 260); }
       G.onTypeError(); return true;
     }
-    t.typed++; S.chars++; S.hits++; G.audio.click(); render(t);
+    t.typed++;
+    while (t.typed < t.w.length && !/[a-z]/.test(t.w[t.typed])) t.typed++;
+    S.chars++; S.hits++; G.audio.click(); render(t);
     if (t.typed === t.w.length) finish(t, true);
     return true;
   },
